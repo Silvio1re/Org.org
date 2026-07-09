@@ -3,24 +3,24 @@
 
 SOURCE_FILE="playlists/sources.m3u"
 OUTPUT_FILE="playlists/main.m3u"
-TEMP_SOURCES="/tmp/sources_expanded.m3u"
+TEMP_ALL="/tmp/all_sources.m3u"
 TEMP_VALIDATED="/tmp/validated.m3u"
 
 echo "🧪 Proširujem i testiram linkove iz $SOURCE_FILE..."
 
-# 1. Proširi izvore: ako je link na .m3u, dohvati njegov sadržaj
-> "$TEMP_SOURCES"
-echo "#EXTM3U" >> "$TEMP_SOURCES"
+# 1. Proširi izvore: ako je redak link na .m3u, dohvati njegov sadržaj
+> "$TEMP_ALL"
+echo "#EXTM3U" >> "$TEMP_ALL"
 
 while IFS= read -r line; do
     # Ako je redak link koji završava na .m3u (vanjska lista)
     if [[ $line =~ ^https?://.*\.m3u$ ]]; then
         echo "  Dohvaćam vanjsku listu: $line"
         # Dohvati sadržaj vanjske liste i dodaj ga u privremeni izvor
-        curl -s -L "$line" >> "$TEMP_SOURCES"
+        curl -s -L "$line" >> "$TEMP_ALL"
     else
         # Inače, samo prepiši redak (EXTINF ili link na stream)
-        echo "$line" >> "$TEMP_SOURCES"
+        echo "$line" >> "$TEMP_ALL"
     fi
 done < "$SOURCE_FILE"
 
@@ -29,7 +29,7 @@ done < "$SOURCE_FILE"
 echo "#EXTM3U" >> "$TEMP_VALIDATED"
 
 while IFS= read -r line; do
-    # Traži linkove koji vjerojatno su streamovi (završavaju na .m3u8, .ts, ili sadrže playlist)
+    # Traži linkove koji su streamovi (završavaju na .m3u8, .ts, ili sadrže playlist)
     if [[ $line =~ ^https?:// && ( $line =~ \.m3u8 || $line =~ \.ts || $line =~ playlist ) ]]; then
         echo "  Testiram: $line"
         if curl -s -I --max-time 5 "$line" | grep -q "200\|302\|403"; then
@@ -46,7 +46,7 @@ while IFS= read -r line; do
         # Spremi EXTINF redak za eventualno korištenje
         prev_line="$line"
     fi
-done < "$TEMP_SOURCES"
+done < "$TEMP_ALL"
 
 # 3. Spremi rezultat
 if [ ! -s "$TEMP_VALIDATED" ] || [ "$(grep -c '^http' "$TEMP_VALIDATED")" -eq 0 ]; then

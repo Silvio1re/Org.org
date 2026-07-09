@@ -13,28 +13,24 @@ echo "🧪 Proširujem i testiram linkove iz $SOURCE_FILE..."
 echo "#EXTM3U" >> "$TEMP_ALL"
 
 while IFS= read -r line; do
-    # Ako je redak link koji završava na .m3u (vanjska lista)
     if [[ $line =~ ^https?://.*\.m3u$ ]]; then
         echo "  Dohvaćam vanjsku listu: $line"
-        # Dohvati sadržaj vanjske liste i dodaj ga u privremeni izvor
         curl -s -L "$line" >> "$TEMP_ALL"
     else
-        # Inače, samo prepiši redak (EXTINF ili link na stream)
         echo "$line" >> "$TEMP_ALL"
     fi
 done < "$SOURCE_FILE"
 
-# 2. Sada testiraj sve linkove iz proširene liste
+# 2. Testiraj linkove tako da pokušaš preuzeti prvih nekoliko bajtova
 > "$TEMP_VALIDATED"
 echo "#EXTM3U" >> "$TEMP_VALIDATED"
 
 while IFS= read -r line; do
-    # Traži linkove koji su streamovi (završavaju na .m3u8, .ts, ili sadrže playlist)
     if [[ $line =~ ^https?:// && ( $line =~ \.m3u8 || $line =~ \.ts || $line =~ playlist ) ]]; then
         echo "  Testiram: $line"
-        if curl -s -I --max-time 5 "$line" | grep -q "200\|302\|403"; then
+        # Testiraj tako da preuzmeš prvih 100 KB (ili do 3 sekunde)
+        if curl -s -L --max-time 3 --range 0-102400 "$line" | head -c 100 | grep -q "#EXTM3U\|#EXTINF\|mpeg\|video"; then
             echo "    ✅ RADI!"
-            # Spremi prethodni redak (EXTINF) ako postoji
             if [[ $prev_line == \#EXTINF* ]]; then
                 echo "$prev_line" >> "$TEMP_VALIDATED"
             fi
@@ -43,7 +39,6 @@ while IFS= read -r line; do
             echo "    ❌ NE RADI"
         fi
     else
-        # Spremi EXTINF redak za eventualno korištenje
         prev_line="$line"
     fi
 done < "$TEMP_ALL"

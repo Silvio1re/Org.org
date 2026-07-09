@@ -2,9 +2,9 @@
 
 # ===== HRVATSKA =====
 #EXTINF:-1 group-title="Hrvatska",HRV
-https://raw.githubusercontent.com/iptv-org/iptv/refs/heads/master/streams/hr.m3u
+https://github.com/iptv-org/iptv/blob/master/streams/hr.m3u
 
 # ===== NJEMAČKA =====
 #EXTINF:-1 group-title="DE",Rakuten
-https://raw.githubusercontent.com/iptv-org/iptv/refs/heads/master/streams/de_rakuten.m3u
+https://github.com/iptv-org/iptv/blob/master/streams/de_rakuten.m3u
 

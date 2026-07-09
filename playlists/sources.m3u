@@ -1,39 +1,10 @@
 #EXTM3U
 
 # ===== HRVATSKA =====
-#EXTINF:-1 group-title="Hrvatska",HRT 1
-https://api.hrt.hr/media/api/live/stream/HRT1.m3u8
-#EXTINF:-1 group-title="Hrvatska",HRT 2
-https://api.hrt.hr/media/api/live/stream/HRT2.m3u8
-#EXTINF:-1 group-title="Hrvatska",HRT 3
-https://api.hrt.hr/media/api/live/stream/HRT3.m3u8
-#EXTINF:-1 group-title="Hrvatska",HRT 4
-https://api.hrt.hr/media/api/live/stream/HRT4.m3u8
+#EXTINF:-1 group-title="Hrvatska",HRV
+https://raw.githubusercontent.com/iptv-org/iptv/refs/heads/master/streams/hr.m3u
 
 # ===== NJEMAČKA =====
-#EXTINF:-1 group-title="Njemačka",Das Erste
-https://daserste-lh.akamaihd.net/i/daserste_de@1054/index_1200_av-b.m3u8
-#EXTINF:-1 group-title="Njemačka",ZDF
-https://zdf-hls-15.akamaized.net/hls/live/2016498/de/high/master.m3u8
-#EXTINF:-1 group-title="Njemačka",Arte
-https://artelive-lh.akamaihd.net/i/artelive_de@393591/index_1200_av-b.m3u8
+#EXTINF:-1 group-title="DE",Rakuten
+https://raw.githubusercontent.com/iptv-org/iptv/refs/heads/master/streams/de_rakuten.m3u
 
-# ===== AUSTRIJA =====
-#EXTINF:-1 group-title="Austrija",ORF 1
-https://orf1.akamaized.net/hls/live/2016476/event/1.m3u8
-#EXTINF:-1 group-title="Austrija",ORF 2
-https://orf2.akamaized.net/hls/live/2016477/event/1.m3u8
-#EXTINF:-1 group-title="Austrija",ORF 3
-https://orf3.akamaized.net/hls/live/2016478/event/1.m3u8
-#EXTINF:-1 group-title="Austrija",ORF Sport+
-https://orf-sportplus.akamaized.net/hls/live/2016479/event/1.m3u8
-
-# ===== ŠVICARSKA =====
-#EXTINF:-1 group-title="Švicarska",SRF 1
-https://srf-live.akamaized.net/hls/live/2031038/srf1/master.m3u8
-#EXTINF:-1 group-title="Švicarska",SRF 2
-https://srf-live.akamaized.net/hls/live/2031039/srf2/master.m3u8
-
-# ===== DODATNI IZVORI =====
-#EXTINF:-1 group-title="Extra",Free-IPTV Channels
-https://raw.githubusercontent.com/Free-IPTV/Channels/main/playlist.m3u

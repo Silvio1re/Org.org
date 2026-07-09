@@ -1,3 +1,5 @@
 #EXTM3U
-#EXTINF:-1 group-title="Njemačka",ZDF
-https://zdf-hls-15.akamaized.net/hls/live/2016498/de/high/master.m3u8
+#EXTINF:-1 group-title="Hrvatska",HRV
+https://raw.githubusercontent.com/iptv-org/iptv/refs/heads/master/streams/hr.m3u
+#EXTINF:-1 group-title="DE",Rakuten
+https://raw.githubusercontent.com/iptv-org/iptv/refs/heads/master/streams/de_rakuten.m3u

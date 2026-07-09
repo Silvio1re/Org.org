@@ -29,16 +29,21 @@ done < "$SOURCE_FILE"
 echo "#EXTM3U" >> "$TEMP_VALIDATED"
 
 while IFS= read -r line; do
-    if [[ $line =~ ^https?:// && ! $line =~ \.m3u$ ]]; then
+    # Traži linkove koji vjerojatno su streamovi (završavaju na .m3u8, .ts, ili sadrže playlist)
+    if [[ $line =~ ^https?:// && ( $line =~ \.m3u8 || $line =~ \.ts || $line =~ playlist ) ]]; then
         echo "  Testiram: $line"
         if curl -s -I --max-time 5 "$line" | grep -q "200\|302\|403"; then
             echo "    ✅ RADI!"
-            echo "$prev_line" >> "$TEMP_VALIDATED"
+            # Spremi prethodni redak (EXTINF) ako postoji
+            if [[ $prev_line == \#EXTINF* ]]; then
+                echo "$prev_line" >> "$TEMP_VALIDATED"
+            fi
             echo "$line" >> "$TEMP_VALIDATED"
         else
             echo "    ❌ NE RADI"
         fi
     else
+        # Spremi EXTINF redak za eventualno korištenje
         prev_line="$line"
     fi
 done < "$TEMP_SOURCES"

@@ -7,6 +7,12 @@ TEMP_FILE="/tmp/validated.m3u"
 
 echo "🧪 Testiram linkove iz $SOURCE_FILE..."
 
+# Provjeri postoji li izvorna datoteka
+if [ ! -f "$SOURCE_FILE" ]; then
+    echo "❌ GREŠKA: Datoteka $SOURCE_FILE ne postoji!"
+    exit 1
+fi
+
 > "$TEMP_FILE"
 echo "#EXTM3U" > "$TEMP_FILE"
 
@@ -25,9 +31,12 @@ while IFS= read -r line; do
     fi
 done < "$SOURCE_FILE"
 
+# Ako nema radnih linkova, kreiraj praznu listu (neće biti greške)
 if [ ! -s "$TEMP_FILE" ] || [ "$(grep -c '^http' "$TEMP_FILE")" -eq 0 ]; then
-    echo "⚠️  Nema radnih linkova! Zadržavam staru listu."
-    exit 0
+    echo "⚠️  Nema radnih linkova! Stvaram praznu listu."
+    echo "#EXTM3U" > "$OUTPUT_FILE"
+    echo "# Nema aktivnih kanala" >> "$OUTPUT_FILE"
+    exit 0  # Završava bez greške
 fi
 
 mv "$TEMP_FILE" "$OUTPUT_FILE"

@@ -3,42 +3,54 @@
 
 SOURCE_FILE="playlists/sources.m3u"
 OUTPUT_FILE="playlists/main.m3u"
-TEMP_FILE="/tmp/validated.m3u"
+TEMP_SOURCES="/tmp/sources_expanded.m3u"
+TEMP_VALIDATED="/tmp/validated.m3u"
 
-echo "🧪 Testiram linkove iz $SOURCE_FILE..."
+echo "🧪 Proširujem i testiram linkove iz $SOURCE_FILE..."
 
-# Provjeri postoji li izvorna datoteka
-if [ ! -f "$SOURCE_FILE" ]; then
-    echo "❌ GREŠKA: Datoteka $SOURCE_FILE ne postoji!"
-    exit 1
-fi
-
-> "$TEMP_FILE"
-echo "#EXTM3U" > "$TEMP_FILE"
+# 1. Proširi izvore: ako je link na .m3u, dohvati njegov sadržaj
+> "$TEMP_SOURCES"
+echo "#EXTM3U" >> "$TEMP_SOURCES"
 
 while IFS= read -r line; do
-    if [[ $line =~ ^https?:// ]]; then
+    # Ako je redak link koji završava na .m3u (vanjska lista)
+    if [[ $line =~ ^https?://.*\.m3u$ ]]; then
+        echo "  Dohvaćam vanjsku listu: $line"
+        # Dohvati sadržaj vanjske liste i dodaj ga u privremeni izvor
+        curl -s -L "$line" >> "$TEMP_SOURCES"
+    else
+        # Inače, samo prepiši redak (EXTINF ili link na stream)
+        echo "$line" >> "$TEMP_SOURCES"
+    fi
+done < "$SOURCE_FILE"
+
+# 2. Sada testiraj sve linkove iz proširene liste
+> "$TEMP_VALIDATED"
+echo "#EXTM3U" >> "$TEMP_VALIDATED"
+
+while IFS= read -r line; do
+    if [[ $line =~ ^https?:// && ! $line =~ \.m3u$ ]]; then
         echo "  Testiram: $line"
         if curl -s -I --max-time 5 "$line" | grep -q "200\|302\|403"; then
             echo "    ✅ RADI!"
-            echo "$prev_line" >> "$TEMP_FILE"
-            echo "$line" >> "$TEMP_FILE"
+            echo "$prev_line" >> "$TEMP_VALIDATED"
+            echo "$line" >> "$TEMP_VALIDATED"
         else
             echo "    ❌ NE RADI"
         fi
     else
         prev_line="$line"
     fi
-done < "$SOURCE_FILE"
+done < "$TEMP_SOURCES"
 
-# Ako nema radnih linkova, kreiraj praznu listu (neće biti greške)
-if [ ! -s "$TEMP_FILE" ] || [ "$(grep -c '^http' "$TEMP_FILE")" -eq 0 ]; then
+# 3. Spremi rezultat
+if [ ! -s "$TEMP_VALIDATED" ] || [ "$(grep -c '^http' "$TEMP_VALIDATED")" -eq 0 ]; then
     echo "⚠️  Nema radnih linkova! Stvaram praznu listu."
     echo "#EXTM3U" > "$OUTPUT_FILE"
     echo "# Nema aktivnih kanala" >> "$OUTPUT_FILE"
-    exit 0  # Završava bez greške
+    exit 0
 fi
 
-mv "$TEMP_FILE" "$OUTPUT_FILE"
+mv "$TEMP_VALIDATED" "$OUTPUT_FILE"
 
 echo "✅ Lista ažurirana! Aktivnih linkova: $(grep -c '^http' "$OUTPUT_FILE")"

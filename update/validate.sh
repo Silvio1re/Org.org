@@ -8,24 +8,28 @@ TEMP_CLEAN="/tmp/clean_sources.m3u"
 
 echo "🧪 Proširujem izvore iz $SOURCE_FILE..."
 
-# 1. Proširi izvore i dodaj group-title prema nazivu liste
+# 1. Proširi izvore i dodaj group-title
 > "$TEMP_ALL"
 echo "#EXTM3U" >> "$TEMP_ALL"
 
 while IFS= read -r line; do
     if [[ $line =~ ^https?://.*\.m3u$ ]]; then
         echo "  Dohvaćam vanjsku listu: $line"
+        
         # Odredi grupu prema nazivu datoteke
         if [[ $line =~ hr\.m3u ]]; then
             group="Hrvatska"
         elif [[ $line =~ de_rakuten\.m3u ]]; then
             group="Njemačka"
-        elif [[ $line =~ at\.m3u ]]; then
-            group="Austrija"
+        elif [[ $line =~ ch\.m3u ]]; then
+            group="Švicarska"
+        elif [[ $line =~ uk_rakuten\.m3u ]]; then
+            group="UK"
         else
-            group="EU"
+            group="Ostalo"
         fi
-        # Dohvati listu i zamijeni tvg-id s group-title
+        
+        # Dohvati listu i dodaj group-title
         curl -s -L "$line" | sed "s/tvg-id=\"[^\"]*\"/group-title=\"$group\"/g" >> "$TEMP_ALL"
     else
         echo "$line" >> "$TEMP_ALL"

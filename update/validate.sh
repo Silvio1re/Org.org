@@ -8,14 +8,25 @@ TEMP_CLEAN="/tmp/clean_sources.m3u"
 
 echo "🧪 Proširujem izvore iz $SOURCE_FILE..."
 
-# 1. Proširi izvore: ako je redak link na .m3u, dohvati njegov sadržaj
+# 1. Proširi izvore i dodaj group-title prema nazivu liste
 > "$TEMP_ALL"
 echo "#EXTM3U" >> "$TEMP_ALL"
 
 while IFS= read -r line; do
     if [[ $line =~ ^https?://.*\.m3u$ ]]; then
         echo "  Dohvaćam vanjsku listu: $line"
-        curl -s -L "$line" >> "$TEMP_ALL"
+        # Odredi grupu prema nazivu datoteke
+        if [[ $line =~ hr\.m3u ]]; then
+            group="Hrvatska"
+        elif [[ $line =~ de_rakuten\.m3u ]]; then
+            group="Njemačka"
+        elif [[ $line =~ at\.m3u ]]; then
+            group="Austrija"
+        else
+            group="EU"
+        fi
+        # Dohvati listu i zamijeni tvg-id s group-title
+        curl -s -L "$line" | sed "s/tvg-id=\"[^\"]*\"/group-title=\"$group\"/g" >> "$TEMP_ALL"
     else
         echo "$line" >> "$TEMP_ALL"
     fi
@@ -25,27 +36,20 @@ done < "$SOURCE_FILE"
 > "$TEMP_CLEAN"
 echo "#EXTM3U" >> "$TEMP_CLEAN"
 
-# Čitamo datoteku red po red, pamtimo EXTINF i spajamo ga s linkom
 while IFS= read -r line; do
-    # Ako je redak EXTINF, spremi ga u varijablu
     if [[ $line == \#EXTINF* ]]; then
         current_extinf="$line"
     fi
-    # Ako je redak link (počinje s http), a imamo spremljen EXTINF
     if [[ $line =~ ^https?:// ]] && [ -n "$current_extinf" ]; then
-        # Zapiši EXTINF i link
         echo "$current_extinf" >> "$TEMP_CLEAN"
         echo "$line" >> "$TEMP_CLEAN"
-        # Očisti varijablu da se ne ponavlja
         current_extinf=""
     fi
 done < "$TEMP_ALL"
 
-# 3. Ukloni duplikate (na temelju linkova)
+# 3. Ukloni duplikate
 > "$OUTPUT_FILE"
 echo "#EXTM3U" >> "$OUTPUT_FILE"
-
-# Pročitaj čistu listu, izvuci jedinstvene linkove
 awk '!seen[$0]++' "$TEMP_CLEAN" >> "$OUTPUT_FILE"
 
 echo "✅ Lista sastavljena! Ukupno kanala: $(grep -c '^#EXTINF' "$OUTPUT_FILE")"

@@ -1,14 +1,18 @@
 #!/bin/bash
 # update/validate.sh
 # ======================================================
-# IPTV M3U validator, sastavljač lista i Live Checker
+# IPTV M3U validator i sastavljač lista s grupama
+# ======================================================
+# - Dohvaća vanjske M3U liste
+# - Dodaje group-title prema nazivu datoteke
+# - Uklanja duplikate po URL-u
+# - Generira main.m3u sa svim kanalima (bez provjere dostupnosti)
 # ======================================================
 
 SOURCE_FILE="playlists/sources.m3u"
 OUTPUT_FILE="playlists/main.m3u"
 TEMP_ALL="/tmp/all_sources.m3u"
 TEMP_CLEAN="/tmp/clean_sources.m3u"
-TEMP_ALIVE="/tmp/alive_sources.m3u"
 
 # Osiguraj da direktorij za izlaznu datoteku postoji
 mkdir -p "$(dirname "$OUTPUT_FILE")"
@@ -21,13 +25,17 @@ echo "🧪 Korak 1: Proširujem izvore iz $SOURCE_FILE..."
 echo "#EXTM3U" > "$TEMP_ALL"
 
 while IFS= read -r line || [[ -n "$line" ]]; do
+    # Ukloni Carriage Return (\r) oznake (Windows kompatibilnost)
     line="${line//$'\r'/}"
+    
+    # Preskoči prazne redove i obične komentare (ali ne i #EXTINF)
     [[ -z "$line" || ( "$line" =~ ^[[:space:]]*# && ! "$line" =~ ^#EXTINF ) ]] && continue
 
-    # Fleksibilniji regex za M3U linkove (neki imaju parametre na kraju poput ?token=...)
+    # Ako je redak link na vanjsku M3U listu (s ili bez parametara)
     if [[ $line =~ ^https?://.*\.m3u($|\?) ]]; then
         echo "  Dohvaćam vanjsku listu: $line"
 
+        # Odredi naziv grupe prema nazivu datoteke
         if [[ $line =~ hr\.m3u ]]; then group="Hrvatska"
         elif [[ $line =~ de_rakuten\.m3u ]]; then group="Njemačka"
         elif [[ $line =~ ch\.m3u ]]; then group="Švicarska"
@@ -40,11 +48,13 @@ while IFS= read -r line || [[ -n "$line" ]]; do
         else group="Ostalo"
         fi
 
+        # Dohvati listu, očisti je od \r, zamijeni/dodaj group-title
         curl -s -L "$line" | tr -d '\r' | sed -E "
             /group-title=/!s/(#EXTINF:-?[0-9]+[^,]*)(,)/\1 group-title=\"$group\"\2/g;
             s/group-title=\"[^\"]*\"/group-title=\"$group\"/g
         " >> "$TEMP_ALL" || echo "  ⚠️ Greška pri dohvaćanju: $line"
     else
+        # Inače, samo prepiši redak (EXTINF ili direktan link)
         echo "$line" >> "$TEMP_ALL"
     fi
 done < "$SOURCE_FILE"
@@ -55,6 +65,7 @@ done < "$SOURCE_FILE"
 echo "🧹 Korak 2: Čistim strukturu i uklanjam duplikate..."
 echo "#EXTM3U" > "$TEMP_CLEAN"
 
+# Spajanje EXTINF i linkova
 current_extinf=""
 while IFS= read -r line || [[ -n "$line" ]]; do
     line="${line//$'\r'/}"
@@ -69,7 +80,8 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     fi
 done < "$TEMP_ALL"
 
-echo "#EXTM3U" > "$TEMP_ALL"
+# Uklanjanje duplikata po URL-u
+echo "#EXTM3U" > "$OUTPUT_FILE"
 awk '
     /^#[Ee][Xx][Tt][Ii][Nn][Ff]/ { extinf = $0; next }
     /^https?:\/\// { 
@@ -79,56 +91,23 @@ awk '
         }
         extinf = "" 
     }
-' "$TEMP_CLEAN" >> "$TEMP_ALL"
+' "$TEMP_CLEAN" >> "$OUTPUT_FILE"
 
 # ============================================================
-# 3. PARALELNA PROVJERA DOSTUPNOSTI (Live Checker)
-# ============================================================
-echo "🔍 Korak 3: Pokrećem provjeru dostupnosti streamova (paralelno)..."
-echo "#EXTM3U" > "$TEMP_ALIVE"
-
-provjeri_stream() {
-    local extinf="$1"
-    local url="$2"
-    
-    local status
-    status=$(curl -s -o /dev/null -I -L -w "%{http_code}" \
-        -H "User-Agent: VLC/3.0.18" \
-        --connect-timeout 3 --max-time 5 "$url")
-    
-    if [[ "$status" =~ ^(200|301|302|307|308|403)$ ]]; then
-        printf "%s\n%s\n" "$extinf" "$url"
-    fi
-}
-export -f provjeri_stream
-
-# POPRAVLJENO: Koristi se pravi Tab znak (\t) unutar awk i ispravan xargs poziv
-awk '
-    /^#[Ee][Xx][Tt][Ii][Nn][Ff]/ { extinf = $0; next }
-    /^https?:\/\// { if (extinf != "") print extinf "\t" $0; extinf = "" }
-' "$TEMP_ALL" | \
-xargs -d '\n' -P 10 -I {} bash -c '
-    line="{}"
-    extinf="${line%%	*}"
-    url="${line##*	}"
-    provjeri_stream "$extinf" "$url"
-' >> "$TEMP_ALIVE"
-
-cat "$TEMP_ALIVE" > "$OUTPUT_FILE"
-
-# ============================================================
-# 4. STATISTIKA I ZAVRŠETAK
+# 3. STATISTIKA I ZAVRŠETAK
 # ============================================================
 TOTAL=$(grep -c -i '^#EXTINF' "$OUTPUT_FILE")
 echo "✅ Lista uspješno sastavljena!"
-echo "📊 Ukupno aktivnih kanala spremljeno: $TOTAL"
+echo "📊 Ukupno kanala spremljeno: $TOTAL"
 
 if [ "$TOTAL" -eq 0 ]; then
-    echo "⚠️  UPOZORENJE: Rezultirajuća lista je potpuno prazna!"
-    echo "    Mogući razlozi: Svi streamovi su ugašeni ili vas je server blokirao zbog prebrzih zahtjeva."
-    rm -f "$TEMP_ALL" "$TEMP_CLEAN" "$TEMP_ALIVE"
+    echo "⚠️  UPOZORENJE: Rezultirajuća lista je prazna!"
+    echo "    Provjeri sources.m3u i vanjske izvore."
+    rm -f "$TEMP_ALL" "$TEMP_CLEAN"
     exit 1
 fi
 
-rm -f "$TEMP_ALL" "$TEMP_CLEAN" "$TEMP_ALIVE"
+# Očisti privremene datoteke
+rm -f "$TEMP_ALL" "$TEMP_CLEAN"
+
 exit 0

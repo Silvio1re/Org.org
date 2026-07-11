@@ -4,7 +4,7 @@
 # IPTV M3U validator i sastavljač lista s grupama
 # ======================================================
 # - Dohvaća vanjske M3U liste
-# - Dodaje group-title prema nazivu datoteke
+# - Dodaje group-title prema nazivu datoteke (uklanja tvg-id)
 # - Uklanja duplikate po URL-u
 # - Generira main.m3u sa svim kanalima (bez provjere dostupnosti)
 # ======================================================
@@ -48,8 +48,10 @@ while IFS= read -r line || [[ -n "$line" ]]; do
         else group="Ostalo"
         fi
 
-        # Dohvati listu, očisti je od \r, zamijeni/dodaj group-title
+        # Dohvati listu, očisti je od \r, dodaj group-title, ukloni tvg-id
         curl -s -L "$line" | tr -d '\r' | sed -E "
+            s/tvg-id=\"[^\"]*\"//g;
+            s/,[[:space:]]*/,/g;
             /group-title=/!s/(#EXTINF:-?[0-9]+[^,]*)(,)/\1 group-title=\"$group\"\2/g;
             s/group-title=\"[^\"]*\"/group-title=\"$group\"/g
         " >> "$TEMP_ALL" || echo "  ⚠️ Greška pri dohvaćanju: $line"
@@ -80,7 +82,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     fi
 done < "$TEMP_ALL"
 
-# Uklanjanje duplikata po URL-u
+# Uklanjanje duplikata po URL-u (prvi se zadržava)
 echo "#EXTM3U" > "$OUTPUT_FILE"
 awk '
     /^#[Ee][Xx][Tt][Ii][Nn][Ff]/ { extinf = $0; next }

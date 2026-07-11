@@ -3,7 +3,7 @@ name: Update IPTV List
 on:
   schedule:
     - cron: '0 0 * * *'   # Svaki dan u ponoć
-  workflow_dispatch:
+  workflow_dispatch:      # Omogućuje ručno pokretanje preko GitHub sučelja
 
 permissions:
   contents: write
@@ -13,7 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
       
       - name: Make validator executable
         run: chmod +x update/validate.sh
@@ -26,6 +27,8 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git add playlists/main.m3u
+          
+          # Provjeri ima li stvarnih promjena u playlisti prije nego napraviš commit
           if ! git diff --staged --quiet; then
             git commit -m "Auto-update playlist $(date +'%Y-%m-%d %H:%M')"
             git push
